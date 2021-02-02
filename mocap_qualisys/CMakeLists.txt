@@ -60,6 +60,17 @@ target_link_libraries(mocap_qualisys_node
   ${catkin_LIBRARIES}
 )
 
+install(TARGETS mocap_qualisys_driver mocap_qualisys_node
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+
 else()
   message(ERROR " MacOS is unsupported! mocap_qualisys will not be built!")
 endif()
