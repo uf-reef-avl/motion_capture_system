@@ -23,7 +23,7 @@ CRTPacket::CRTPacket(int nMajorVersion, int nMinorVersion, bool bBigEndian)
     ClearData();
 }
 
-void CRTPacket::GetVersion(unsigned int &nMajorVersion, unsigned int &nMinorVersion)
+void CRTPacket::GetVersion(unsigned int& nMajorVersion, unsigned int& nMinorVersion)
 {
     nMajorVersion = mnMajorVersion;
     nMinorVersion = mnMinorVersion;
@@ -57,18 +57,10 @@ void CRTPacket::ClearData()
     mnForcePlateCount         = 0;
     mnForceSinglePlateCount   = 0;
     mnGazeVectorCount         = 0;
+    mnEyeTrackerCount         = 0;
     mnTimecodeCount           = 0;
-    mSkeletonCount           = 0;
-    memset(mpComponentData, 0, ComponentNone * 4);
-    memset(mp2DData, 0, MAX_CAMERA_COUNT * 4);
-    memset(mp2DLinData, 0, MAX_CAMERA_COUNT * 4);
-    memset(mpImageData, 0, MAX_CAMERA_COUNT * 4);
-    memset(mpAnalogData, 0, MAX_ANALOG_DEVICE_COUNT * 4);
-    memset(mpAnalogSingleData, 0, MAX_ANALOG_DEVICE_COUNT * 4);
-    memset(mpForceData, 0, MAX_FORCE_PLATE_COUNT * 4);
-    memset(mpForceSingleData, 0, MAX_FORCE_PLATE_COUNT * 4);
-    memset(mpGazeVectorData, 0, MAX_GAZE_VECTOR_COUNT * 4);
-    memset(mpSkeletonData, 0, MAX_SKELETON_COUNT * 4);
+    mSkeletonCount            = 0;
+    mpComponentData.resize(ComponentNone);
 }
 
 void CRTPacket::SetData(char* ptr)
@@ -87,6 +79,7 @@ void CRTPacket::SetData(char* ptr)
     mnForcePlateCount         = 0;
     mnForceSinglePlateCount   = 0;
     mnGazeVectorCount         = 0;
+    mnEyeTrackerCount         = 0;
     mnTimecodeCount           = 0;
     mSkeletonCount           = 0;
 
@@ -111,45 +104,57 @@ void CRTPacket::SetData(char* ptr)
             if (nComponentType == Component2d)
             {
                 mn2DCameraCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mp2DData.resize(mn2DCameraCount);
 
-                mp2DData[0] = pCurrentComponent + 16;
-                for (nCamera = 1; nCamera < mn2DCameraCount; nCamera++)
+                if (!mp2DData.empty())
                 {
-                    if (mnMajorVersion > 1 || mnMinorVersion > 7)
+                    mp2DData[0] = pCurrentComponent + 16;
+                    for (nCamera = 1; nCamera < mn2DCameraCount; nCamera++)
                     {
-                        mp2DData[nCamera] = mp2DData[nCamera - 1] + 5 + Get2DMarkerCount(nCamera - 1) * 12;
-                    }
-                    else
-                    {
-                        mp2DData[nCamera] = mp2DData[nCamera - 1] + 4 + Get2DMarkerCount(nCamera - 1) * 12;
+                        if (mnMajorVersion > 1 || mnMinorVersion > 7)
+                        {
+                            mp2DData[nCamera] = mp2DData[nCamera - 1] + 5 + Get2DMarkerCount(nCamera - 1) * 12;
+                        }
+                        else
+                        {
+                            mp2DData[nCamera] = mp2DData[nCamera - 1] + 4 + Get2DMarkerCount(nCamera - 1) * 12;
+                        }
                     }
                 }
             }
             if (nComponentType == Component2dLin)
             {
                 mn2DLinCameraCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mp2DLinData.resize(mn2DLinCameraCount);
 
-                mp2DLinData[0] = pCurrentComponent + 16;
-                for (nCamera = 1; nCamera < mn2DLinCameraCount; nCamera++)
+                if (!mp2DLinData.empty())
                 {
-                    if (mnMajorVersion > 1 || mnMinorVersion > 7)
+                    mp2DLinData[0] = pCurrentComponent + 16;
+                    for (nCamera = 1; nCamera < mn2DLinCameraCount; nCamera++)
                     {
-                        mp2DLinData[nCamera] = mp2DLinData[nCamera - 1] + 5 + Get2DLinMarkerCount(nCamera - 1) * 12;
-                    }
-                    else
-                    {
-                        mp2DLinData[nCamera] = mp2DLinData[nCamera - 1] + 4 + Get2DLinMarkerCount(nCamera - 1) * 12;
+                        if (mnMajorVersion > 1 || mnMinorVersion > 7)
+                        {
+                            mp2DLinData[nCamera] = mp2DLinData[nCamera - 1] + 5 + Get2DLinMarkerCount(nCamera - 1) * 12;
+                        }
+                        else
+                        {
+                            mp2DLinData[nCamera] = mp2DLinData[nCamera - 1] + 4 + Get2DLinMarkerCount(nCamera - 1) * 12;
+                        }
                     }
                 }
             }
             if (nComponentType == ComponentImage)
             {
                 mnImageCameraCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpImageData.resize(mnImageCameraCount);
 
-                mpImageData[0] = pCurrentComponent + 12;
-                for (nCamera = 1; nCamera < mnImageCameraCount; nCamera++)
+                if (!mpImageData.empty())
                 {
-                    mpImageData[nCamera] = mpImageData[nCamera - 1] + 36 + SetByteOrder((unsigned int*)(mpImageData[nCamera - 1] + 32));
+                    mpImageData[0] = pCurrentComponent + 12;
+                    for (nCamera = 1; nCamera < mnImageCameraCount; nCamera++)
+                    {
+                        mpImageData[nCamera] = mpImageData[nCamera - 1] + 36 + SetByteOrder((unsigned int*)(mpImageData[nCamera - 1] + 32));
+                    }
                 }
             }
             if (nComponentType == ComponentAnalog)
@@ -162,111 +167,156 @@ void CRTPacket::SetData(char* ptr)
                 {
                     mnAnalogDeviceCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
                 }
+                mpAnalogData.resize(mnAnalogDeviceCount);
 
-                if ((mnMajorVersion > 1) || (mnMinorVersion > 7))
+                if (!mpAnalogData.empty())
                 {
-                    mpAnalogData[0] = pCurrentComponent + 12;
-                }
-                else
-                {
-                    mpAnalogData[0] = pCurrentComponent + 16;
-                }
-                for (nDevice = 1; nDevice < mnAnalogDeviceCount; nDevice++)
-                {
-                    mpAnalogData[nDevice] = mpAnalogData[nDevice - 1] + 16 + 
-                        (SetByteOrder((unsigned int*)(mpAnalogData[nDevice - 1] + 4)) *
-                        SetByteOrder((unsigned int*)(mpAnalogData[nDevice - 1] + 8)) * 4);
+                    if ((mnMajorVersion > 1) || (mnMinorVersion > 7))
+                    {
+                        mpAnalogData[0] = pCurrentComponent + 12;
+                    }
+                    else
+                    {
+                        mpAnalogData[0] = pCurrentComponent + 16;
+                    }
+                    for (nDevice = 1; nDevice < mnAnalogDeviceCount; nDevice++)
+                    {
+                        mpAnalogData[nDevice] = mpAnalogData[nDevice - 1] + 16 +
+                            (SetByteOrder((unsigned int*)(mpAnalogData[nDevice - 1] + 4)) *
+                                SetByteOrder((unsigned int*)(mpAnalogData[nDevice - 1] + 8)) * 4);
+                    }
                 }
             }
             if (nComponentType == ComponentAnalogSingle)
             {
                 mnAnalogSingleDeviceCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpAnalogSingleData.resize(mnAnalogSingleDeviceCount);
 
-                if (mnMajorVersion > 1 || mnMinorVersion > 7)
+                if (!mpAnalogSingleData.empty())
                 {
-                    mpAnalogSingleData[0] = pCurrentComponent + 12;
-                }
-                else
-                {
-                    mpAnalogSingleData[0] = pCurrentComponent + 16;
-                }
+                    if (mnMajorVersion > 1 || mnMinorVersion > 7)
+                    {
+                        mpAnalogSingleData[0] = pCurrentComponent + 12;
+                    }
+                    else
+                    {
+                        mpAnalogSingleData[0] = pCurrentComponent + 16;
+                    }
 
-                for (nDevice = 1; nDevice < mnAnalogSingleDeviceCount; nDevice++)
-                {
-                    mpAnalogSingleData[nDevice] = mpAnalogSingleData[nDevice - 1] + 8 + 
-                        SetByteOrder((unsigned int*)(mpAnalogSingleData[nDevice - 1] + 4)) * 4;
+                    for (nDevice = 1; nDevice < mnAnalogSingleDeviceCount; nDevice++)
+                    {
+                        mpAnalogSingleData[nDevice] = mpAnalogSingleData[nDevice - 1] + 8 +
+                            SetByteOrder((unsigned int*)(mpAnalogSingleData[nDevice - 1] + 4)) * 4;
+                    }
                 }
             }
             if (nComponentType == ComponentForce)
             {
                 mnForcePlateCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpForceData.resize(mnForcePlateCount);
 
-                if (mnMajorVersion > 1 || mnMinorVersion > 7)
+                if (!mpForceData.empty())
                 {
-                    mpForceData[0] = pCurrentComponent + 12;
-                }
-                else
-                {
-                    mpForceData[0] = pCurrentComponent + 16;
-                }
-                for (nDevice = 1; nDevice < mnForcePlateCount; nDevice++)
-                {
-                    if ((mnMajorVersion == 1) && (mnMinorVersion == 0))
+                    if (mnMajorVersion > 1 || mnMinorVersion > 7)
                     {
-                        mpForceData[nDevice] = mpForceData[nDevice - 1] + 72;
+                        mpForceData[0] = pCurrentComponent + 12;
                     }
                     else
                     {
-                        mpForceData[nDevice] = mpForceData[nDevice - 1] + 12 + 
-                            SetByteOrder((unsigned int*)(mpForceData[nDevice - 1] + 4)) * 36;
+                        mpForceData[0] = pCurrentComponent + 16;
+                    }
+                    for (nDevice = 1; nDevice < mnForcePlateCount; nDevice++)
+                    {
+                        if ((mnMajorVersion == 1) && (mnMinorVersion == 0))
+                        {
+                            mpForceData[nDevice] = mpForceData[nDevice - 1] + 72;
+                        }
+                        else
+                        {
+                            mpForceData[nDevice] = mpForceData[nDevice - 1] + 12 +
+                                SetByteOrder((unsigned int*)(mpForceData[nDevice - 1] + 4)) * 36;
+                        }
                     }
                 }
             }
             if (nComponentType == ComponentForceSingle)
             {
                 mnForceSinglePlateCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpForceSingleData.resize(mnForceSinglePlateCount);
 
-                mpForceSingleData[0] = pCurrentComponent + 12;
-
-                for (nDevice = 1; nDevice < mnForceSinglePlateCount; nDevice++)
+                if (!mpForceSingleData.empty())
                 {
-                    mpForceSingleData[nDevice] = mpForceSingleData[nDevice - 1] + 4 + 36;
+                    mpForceSingleData[0] = pCurrentComponent + 12;
+
+                    for (nDevice = 1; nDevice < mnForceSinglePlateCount; nDevice++)
+                    {
+                        mpForceSingleData[nDevice] = mpForceSingleData[nDevice - 1] + 4 + 36;
+                    }
                 }
             }
             if (nComponentType == ComponentGazeVector)
             {
                 mnGazeVectorCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpGazeVectorData.resize(mnGazeVectorCount);
 
-                mpGazeVectorData[0] = pCurrentComponent + 12;
-
-                for (nDevice = 1; nDevice < mnGazeVectorCount; nDevice++)
+                if (!mpGazeVectorData.empty())
                 {
-                    unsigned int nPrevSampleCount = SetByteOrder((unsigned int*)(mpGazeVectorData[nDevice - 1]));
-                    mpGazeVectorData[nDevice] = mpGazeVectorData[nDevice - 1] + 4 + ((nPrevSampleCount == 0) ? 0 : 4) +
-                                                nPrevSampleCount * 24;
+                    mpGazeVectorData[0] = pCurrentComponent + 12;
+
+                    for (nDevice = 1; nDevice < mnGazeVectorCount; nDevice++)
+                    {
+                        unsigned int nPrevSampleCount = SetByteOrder((unsigned int*)(mpGazeVectorData[nDevice - 1]));
+                        mpGazeVectorData[nDevice] = mpGazeVectorData[nDevice - 1] + 4 + ((nPrevSampleCount == 0) ? 0 : 4) +
+                            nPrevSampleCount * 24;
+                    }
+                }
+            }
+            if (nComponentType == ComponentEyeTracker)
+            {
+                mnEyeTrackerCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpEyeTrackerData.resize(mnEyeTrackerCount);
+
+                if (!mpEyeTrackerData.empty())
+                {
+                    mpEyeTrackerData[0] = pCurrentComponent + 12;
+
+                    for (nDevice = 1; nDevice < mnEyeTrackerCount; nDevice++)
+                    {
+                        unsigned int nPrevSampleCount = SetByteOrder((unsigned int*)(mpEyeTrackerData[nDevice - 1]));
+                        mpEyeTrackerData[nDevice] = mpEyeTrackerData[nDevice - 1] + 4 + ((nPrevSampleCount == 0) ? 0 : 4) +
+                            nPrevSampleCount * 28;
+                    }
                 }
             }
             if (nComponentType == ComponentTimecode)
             {
                 mnTimecodeCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpTimecodeData.resize(mnTimecodeCount);
 
-                mpTimecodeData[0] = pCurrentComponent + 12;
-
-                for (nDevice = 1; nDevice < mnTimecodeCount; nDevice++)
+                if (!mpTimecodeData.empty())
                 {
-                    mpTimecodeData[nDevice] = mpTimecodeData[nDevice - 1] + 12;
+                    mpTimecodeData[0] = pCurrentComponent + 12;
+
+                    for (nDevice = 1; nDevice < mnTimecodeCount; nDevice++)
+                    {
+                        mpTimecodeData[nDevice] = mpTimecodeData[nDevice - 1] + 12;
+                    }
                 }
             }
             if (nComponentType == ComponentSkeleton)
             {
                 mSkeletonCount = SetByteOrder((unsigned int*)(pCurrentComponent + 8));
+                mpSkeletonData.resize(mSkeletonCount);
 
-                mpSkeletonData[0] = pCurrentComponent + 12;
-
-                for (nDevice = 1; nDevice < mSkeletonCount; nDevice++)
+                if (!mpSkeletonData.empty())
                 {
-                    unsigned int prevSegmentCount = SetByteOrder((unsigned int*)(mpSkeletonData[nDevice - 1]));
-                    mpSkeletonData[nDevice] = mpSkeletonData[nDevice - 1] + 4 + prevSegmentCount * 32;
+                    mpSkeletonData[0] = pCurrentComponent + 12;
+
+                    for (nDevice = 1; nDevice < mSkeletonCount; nDevice++)
+                    {
+                        unsigned int prevSegmentCount = SetByteOrder((unsigned int*)(mpSkeletonData[nDevice - 1]));
+                        mpSkeletonData[nDevice] = mpSkeletonData[nDevice - 1] + 4 + prevSegmentCount * 32;
+                    }
                 }
             }
             pCurrentComponent += SetByteOrder((int*)pCurrentComponent);
@@ -276,7 +326,7 @@ void CRTPacket::SetData(char* ptr)
 } // SetData
 
 
-void CRTPacket::GetData(char* &ptr, unsigned int &nSize)
+void CRTPacket::GetData(char* &ptr, unsigned int& nSize)
 {
     if (mpData == nullptr)
     {
@@ -549,7 +599,7 @@ unsigned char CRTPacket::Get2DStatusFlags(unsigned int nCameraIndex)
     return 0;
 }
 
-bool CRTPacket::Get2DMarker(unsigned int nCameraIndex, unsigned int nMarkerIndex, unsigned int &nX, unsigned int &nY,
+bool CRTPacket::Get2DMarker(unsigned int nCameraIndex, unsigned int nMarkerIndex, unsigned int& nX, unsigned int& nY,
                             unsigned short &nXDiameter, unsigned short &nYDiameter)
 {
     int nOffset;
@@ -602,7 +652,7 @@ unsigned char CRTPacket::Get2DLinStatusFlags(unsigned int nCameraIndex)
     return 0;
 }
 
-bool CRTPacket::Get2DLinMarker(unsigned int nCameraIndex, unsigned int nMarkerIndex, unsigned int &nX, unsigned int &nY,
+bool CRTPacket::Get2DLinMarker(unsigned int nCameraIndex, unsigned int nMarkerIndex, unsigned int& nX, unsigned int& nY,
                                unsigned short &nXDiameter, unsigned short &nYDiameter)
 {
     int nOffset;
@@ -728,7 +778,7 @@ unsigned int CRTPacket::Get3DNoLabelsMarkerCount()
     return SetByteOrder((unsigned int*)(pData + 8));
 }
 
-bool CRTPacket::Get3DNoLabelsMarker(unsigned int nMarkerIndex, float &fX, float &fY, float &fZ, unsigned int &nId)
+bool CRTPacket::Get3DNoLabelsMarker(unsigned int nMarkerIndex, float &fX, float &fY, float &fZ, unsigned int& nId)
 {
     char* pData = mpComponentData[Component3dNoLabels - 1];
 
@@ -770,7 +820,7 @@ unsigned int CRTPacket::Get3DNoLabelsResidualMarkerCount()
 }
 
 bool CRTPacket::Get3DNoLabelsResidualMarker(unsigned int nMarkerIndex, float &fX, float &fY, float &fZ,
-                                            unsigned int &nId, float &fResidual)
+                                            unsigned int& nId, float &fResidual)
 {
     char* pData = mpComponentData[Component3dNoLabelsRes - 1];
 
@@ -839,7 +889,7 @@ bool CRTPacket::Get6DOFBody(unsigned int nBodyIndex, float &fX, float &fY, float
         fZ = (float)SetByteOrder((double*)(pData + 32 + nBodyIndex * 96));
         for (int i = 0; i < 9; i++)
         {
-            afRotMatrix[i] = (float)SetByteOrder((float*)(pData + 40 + (i * 4) + nBodyIndex * 96));
+            afRotMatrix[i] = (float)SetByteOrder((double*)(pData + 40 + (i * 8) + nBodyIndex * 96));
         }
     }
     return true;
@@ -1059,80 +1109,148 @@ bool CRTPacket::GetGazeVector(unsigned int nVectorIndex, SGazeVector* pGazeVecto
 
 
 //-----------------------------------------------------------
-//                       Timecode
+//                       Eye Tracker
 //-----------------------------------------------------------
-unsigned int CRTPacket::GetTimecodeCount()
+unsigned int CRTPacket::GetEyeTrackerCount()
 {
-    return mnTimecodeCount;
+    return mnEyeTrackerCount;
 }
 
-bool CRTPacket::GetTimecodeType(unsigned int nTimecodeIndex, CRTPacket::ETimecodeType &timecodeType)
+unsigned int CRTPacket::GetEyeTrackerSampleCount(unsigned int nVectorIndex)
 {
-    if (mnTimecodeCount <= nTimecodeIndex)
+    if (mnEyeTrackerCount <= nVectorIndex)
+    {
+        return 0;
+    }
+    return SetByteOrder((unsigned int*)(mpEyeTrackerData[nVectorIndex]));
+}
+
+unsigned int CRTPacket::GetEyeTrackerSampleNumber(unsigned int nVectorIndex)
+{
+    unsigned int nSampleCount = GetEyeTrackerSampleCount(nVectorIndex);
+
+    if (nSampleCount == 0)
+    {
+        return 0;
+    }
+    return SetByteOrder((unsigned int*)(mpEyeTrackerData[nVectorIndex] + 4));
+}
+
+bool CRTPacket::GetEyeTrackerData(unsigned int eyeTrackerIndex, unsigned int nSampleIndex, SEyeTracker &sEyeTracker)
+{
+    unsigned int nSampleCount = GetEyeTrackerSampleCount(eyeTrackerIndex);
+
+    if (nSampleCount == 0 || nSampleIndex >= nSampleCount)
     {
         return false;
     }
-    timecodeType = (CRTPacket::ETimecodeType)SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex]));
+
+    for (unsigned int k = 0; k < (sizeof(SEyeTracker) / sizeof(float)); k++)
+    {
+        *(((float*)&sEyeTracker) + k) =
+            (float)SetByteOrder((float*)(mpEyeTrackerData[eyeTrackerIndex] + 8 + k * sizeof(float) + nSampleIndex * sizeof(SEyeTracker)));
+    }
+
     return true;
 }
 
-bool CRTPacket::GetTimecodeSMPTE(unsigned int nTimecodeIndex, int &hours, int &minutes, int &seconds, int &frame)
+bool CRTPacket::GetEyeTrackerData(unsigned int eyeTrackerIndex, SEyeTracker* pEyeTrackerBuf, unsigned int nBufSize)
 {
-    if (mnTimecodeCount <= nTimecodeIndex)
+    unsigned int nSampleCount = GetEyeTrackerSampleCount(eyeTrackerIndex);
+
+    if (nSampleCount == 0 || (nBufSize < nSampleCount * sizeof(SEyeTracker)))
+    {
+        return false;
+    }
+
+    for (unsigned int nSample = 0; nSample < nSampleCount; nSample++)
+    {
+        for (unsigned int k = 0; k < (sizeof(SEyeTracker) / sizeof(float)); k++)
+        {
+            *(((float*)pEyeTrackerBuf) + k + (nSample * sizeof(SEyeTracker))) =
+                (float)SetByteOrder((float*)(mpEyeTrackerData[eyeTrackerIndex] + 8 + k * sizeof(float) + nSample * sizeof(SEyeTracker)));
+        }
+    }
+
+    return true;
+}
+
+
+//-----------------------------------------------------------
+//                       Timecode
+//-----------------------------------------------------------
+bool CRTPacket::IsTimeCodeAvailable() const
+{
+    return mnTimecodeCount > 0;
+}
+
+bool CRTPacket::GetTimecodeType(CRTPacket::ETimecodeType &timecodeType)
+{
+    if (mnTimecodeCount <= 0)
+    {
+        return false;
+    }
+    timecodeType = (CRTPacket::ETimecodeType)SetByteOrder((unsigned int*)(mpTimecodeData[0]));
+    return true;
+}
+
+bool CRTPacket::GetTimecodeSMPTE(int& hours, int& minutes, int& seconds, int& frames)
+{
+    if (mnTimecodeCount <= 0)
     {
         return false;
     }
     CRTPacket::ETimecodeType timecodeType;
-    if (GetTimecodeType(nTimecodeIndex, timecodeType))
+    if (GetTimecodeType(timecodeType))
     {
         if (timecodeType == TimecodeSMPTE)
         {
-            hours   = 0x1f & SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8));
-            minutes = 0x3f & (SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8)) >> 5);
-            seconds = 0x3f & (SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8)) >> 11);
-            frame   = 0x1f & (SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8)) >> 17);
+            hours   = 0x1f & SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8));
+            minutes = 0x3f & (SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8)) >> 5);
+            seconds = 0x3f & (SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8)) >> 11);
+            frames  = 0x1f & (SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8)) >> 17);
             return true;
         }
     }
     return false;
 }
 
-bool CRTPacket::GetTimecodeIRIG(unsigned int nTimecodeIndex, int &year, int &day, int &hours, int &minutes, int &seconds, int &tenths)
+bool CRTPacket::GetTimecodeIRIG(int& years, int& days, int& hours, int& minutes, int& seconds, int& tenths)
 {
-    if (mnTimecodeCount <= nTimecodeIndex)
+    if (mnTimecodeCount <= 0)
     {
         return false;
     }
     CRTPacket::ETimecodeType timecodeType;
-    if (GetTimecodeType(nTimecodeIndex, timecodeType))
+    if (GetTimecodeType(timecodeType))
     {
         if (timecodeType == TimecodeIRIG)
         {
-            year        = 0x007f & SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 4));
-            day         = 0x01ff & (SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 4)) >> 7);
-            hours       = 0x001f & SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8));
-            minutes     = 0x003f & (SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8)) >> 5);
-            seconds     = 0x003f & (SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8)) >> 11);
-            tenths      = 0x000f & (SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8)) >> 17);
+            years       = 0x007f & SetByteOrder((unsigned int*)(mpTimecodeData[0] + 4));
+            days        = 0x01ff & (SetByteOrder((unsigned int*)(mpTimecodeData[0] + 4)) >> 7);
+            hours       = 0x001f & SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8));
+            minutes     = 0x003f & (SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8)) >> 5);
+            seconds     = 0x003f & (SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8)) >> 11);
+            tenths      = 0x000f & (SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8)) >> 17);
             return true;
         }
     }
     return false;
 }
 
-bool CRTPacket::GetTimecodeCameraTime(unsigned int nTimecodeIndex, unsigned long long &cameraTime)
+bool CRTPacket::GetTimecodeCameraTime(unsigned long long &cameraTime)
 {
-    if (mnTimecodeCount <= nTimecodeIndex)
+    if (mnTimecodeCount <= 0)
     {
         return false;
     }
     CRTPacket::ETimecodeType timecodeType;
-    if (GetTimecodeType(nTimecodeIndex, timecodeType))
+    if (GetTimecodeType(timecodeType))
     {
         if (timecodeType == TimecodeCamerTime)
         {
-            cameraTime = ((long long)SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 4))) << 32 |
-                          (long long)SetByteOrder((unsigned int*)(mpTimecodeData[nTimecodeIndex] + 8));
+            cameraTime = ((long long)SetByteOrder((unsigned int*)(mpTimecodeData[0] + 4))) << 32 |
+                          (long long)SetByteOrder((unsigned int*)(mpTimecodeData[0] + 8));
             return true;
         }
     }
@@ -1168,7 +1286,7 @@ bool CRTPacket::GetImageFormat(unsigned int nCameraIndex, EImageFormat &eImageFo
     return true;
 }
 
-bool CRTPacket::GetImageSize(unsigned int nCameraIndex, unsigned int &nWidth, unsigned int &nHeight)
+bool CRTPacket::GetImageSize(unsigned int nCameraIndex, unsigned int& nWidth, unsigned int& nHeight)
 {
     if (mnImageCameraCount <= nCameraIndex)
     {
