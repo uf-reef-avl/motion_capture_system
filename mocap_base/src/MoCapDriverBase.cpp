@@ -36,7 +36,8 @@ Subject::Subject(ros::NodeHandle* nptr, const string& sub_name,
   parent_frame (p_frame){
 
   pub_filter = nh_ptr->advertise<nav_msgs::Odometry>(name+"/odom", 1);
-  pub_raw = nh_ptr->advertise<geometry_msgs::PoseStamped>(name+"/pose", 1);
+  pub_raw = nh_ptr->advertise<geometry_msgs::PoseStamped>(name+"nwu/pose", 1);
+  ned_pub_raw = nh_ptr->advertise<geometry_msgs::PoseStamped>(name+"/ned/pose", 1);
   pub_vel = nh_ptr->advertise<geometry_msgs::TwistStamped>(name+"/velocity", 1);
   return;
 }
@@ -111,6 +112,15 @@ void Subject::processNewMeasurement(
 
   tf::quaternionEigenToMsg(m_attitude, pose_raw.pose.orientation);
   tf::pointEigenToMsg(m_position, pose_raw.pose.position);
+
+        geometry_msgs::PoseStamped ned_pose;
+        ned_pose.header = pose_raw.header;
+        ned_pose = pose_raw;
+        ned_pose.pose.position.y = -1 * ned_pose.pose.position.y;
+        ned_pose.pose.position.z = -1 * ned_pose.pose.position.z;
+        ned_pose.pose.orientation.y = -1 * ned_pose.pose.orientation.y;
+        ned_pose.pose.orientation.z = -1 * ned_pose.pose.orientation.z;
+        ned_pub_raw.publish(ned_pose);
 
   
   pub_raw.publish(pose_raw);
